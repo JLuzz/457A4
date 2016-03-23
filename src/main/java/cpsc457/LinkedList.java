@@ -37,21 +37,15 @@ public class LinkedList<T> implements Iterable<T> {
         });
     }
  
- 	public class node<T>{
- 		private node next;
-
- 		public node(){
- 			next = null;	
- 		}
-
- 		public node getNext(){
- 			return next;
- 		}
-
- 		public void setNext(node n){
- 			next = n;
- 		}
- 	}
+    class Node<T> {
+		public T data;
+		public Node<T> next;
+		int size;
+		
+		public Node (T data){
+			this.data = data;
+		}
+	}
 	//############
 	//# LinkList #
 	//############
@@ -103,13 +97,14 @@ public class LinkedList<T> implements Iterable<T> {
     }
 	
 	//Adds a new node to the list at the end (tail)
-    public LinkedList<T> append(T t) {
+    public void append(T t) {
+    	Node<T> temp = new Node(t);
         if(head == null){
-        	head = tail = t;
+        	head = tail = temp;
         	size += 1;
         }else{
-        	tail.next = t;
-        	tail = t;
+        	tail.next = temp;
+        	tail = temp;
         	size += 1;
         }
 		//Check if it is empty 
@@ -141,7 +136,34 @@ public class LinkedList<T> implements Iterable<T> {
 	
 	@Override
     public Iterator<T> iterator() {
-		return null;
+		Iterator<T> iter = new Iterator<T>(){
+			
+			private LinkedList<T>.Node<T> curNode = head, prevNode = null;
+			
+			@Override
+			public boolean hasNext() {
+				// TODO Auto-generated method stub
+				if (curNode.next != null) return true;
+				else return false;
+			}
+
+			@Override
+			public T next() {
+				// TODO Auto-generated method stub
+				prevNode = curNode;
+				curNode = curNode.next;
+				return curNode.next.data;
+			}
+
+			@Override
+			public void remove() {
+				// TODO Auto-generated method stub
+				prevNode.next = curNode.next;
+				curNode = curNode.next;
+			}
+			
+		};
+		return iter;
     }
 	
 	//The next two functions, are being called by the static functions at the top of this page
@@ -187,17 +209,19 @@ public class LinkedList<T> implements Iterable<T> {
 		//attributes (head and tail pointers)
 
 		public Pair<LinkedList<T>, LinkedList<T>> split(LinkedList<T> list){
+			return null;
 
 		}
 
 		public LinkedList<T> merge(LinkedList<T> list1, LinkedList<T> list2){
+			return null;
 
 		}
 		
 		public void sort(LinkedList<T> list) {
 
 			if(list.head == null || list.head.next == null){
-				return list.head;
+				//return list.head;
 			}
 		}
 

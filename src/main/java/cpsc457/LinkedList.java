@@ -43,6 +43,7 @@ public class LinkedList<T> implements Iterable<T> {
 		
 		public Node (T data){
 			this.data = data;
+			this.next = null;
 		}
 	}
 	//############
@@ -118,11 +119,11 @@ public class LinkedList<T> implements Iterable<T> {
 
 	//Gets a node's value at a specific index
     public Node<T> get(int index) {
-		if(index > size-1){
+		if(index > size){
 			return null;
 		}else{
 			Node<T> n = head;
-			for(int i = 0; i <= index; i++){
+			for(int i = 1; i < index; i++){
 				n = n.next;
 			}
 			return n;
@@ -144,6 +145,7 @@ public class LinkedList<T> implements Iterable<T> {
 			@Override
 			public boolean hasNext() {
 				// TODO Auto-generated method stub
+				if(head == null)return false;
 				if (curNode.next != null) return true;
 				else return false;
 			}
@@ -217,7 +219,7 @@ public class LinkedList<T> implements Iterable<T> {
 			LinkedList<T> retList = new LinkedList<T>();
 			Node<T> curNode = null;
 			
-			while(l != null || r != null ){
+			while(l != null && r != null ){
 				int result = this.comp.compare(l.data, r.data);
 				
 				if(result <= 0){
@@ -254,19 +256,24 @@ public class LinkedList<T> implements Iterable<T> {
 		public LinkedList<T> sort1(LinkedList<T> list){
 			if(list.size <= 1) return list;
 			
-			int half = (list.size / 2) - 1;
+			int half = (list.size / 2);
 			
-			LinkedList<T> newlist = null;
+			LinkedList<T> newlist = new LinkedList<T>();
 			
 			Node<T> halfNode = list.get(half);
 			newlist.head = halfNode.next;
+			newlist.tail = list.tail;
+			newlist.size = list.size - half;
+			
+			list.tail = halfNode;
+			list.size = half;
+			
 			halfNode.next = null;
 			
 			LinkedList<T> firstList = this.sort1(list);
 			LinkedList<T> secondList = this.sort1(newlist);
 			
 			list = this.merge(firstList, secondList);
-			
 			return list;
 		}
 
@@ -329,6 +336,7 @@ public class LinkedList<T> implements Iterable<T> {
 			}
 			
 			LinkedList<T> retList = this.merge(firstList, secondList);
+			
 			mutex.unlock(); //release the lock
 			return retList;
 		}

@@ -37,10 +37,9 @@ public class LinkedList<T> implements Iterable<T> {
         });
     }
  
-    class Node<T> {
+    static class Node<T> {
 		public T data;
 		public Node<T> next;
-		int size;
 		
 		public Node (T data){
 			this.data = data;
@@ -58,6 +57,7 @@ public class LinkedList<T> implements Iterable<T> {
  		private Node<T> head;
     	private Node<T> tail;
     	private int size;
+    	private static Lock mutex = null;
  
 	//Constructor
     public LinkedList() {
@@ -67,6 +67,7 @@ public class LinkedList<T> implements Iterable<T> {
     	head = null;
     	tail = null;
     	size = 0;
+    	mutex = new ReentrantLock(true);
     }
 
 	//Returns the size of the list
@@ -138,7 +139,7 @@ public class LinkedList<T> implements Iterable<T> {
     public Iterator<T> iterator() {
 		Iterator<T> iter = new Iterator<T>(){
 			
-			private LinkedList<T>.Node<T> curNode = head, prevNode = null;
+			private LinkedList.Node<T> curNode = head, prevNode = null;
 			
 			@Override
 			public boolean hasNext() {
@@ -192,6 +193,7 @@ public class LinkedList<T> implements Iterable<T> {
 		//Variables (attributes)
 			//ExecutorService
 			//Depth limit
+    	ExecutorService exec = Executors.newFixedThreadPool(25);
 	
 		//Comparison function
 		final Comparator<T> comp;
@@ -208,24 +210,87 @@ public class LinkedList<T> implements Iterable<T> {
 		//to merge sort the link list and then they will fix its 
 		//attributes (head and tail pointers)
 
-		public Pair<LinkedList<T>, LinkedList<T>> split(LinkedList<T> list){
-			return null;
-
-		}
 
 		public LinkedList<T> merge(LinkedList<T> list1, LinkedList<T> list2){
-			return null;
-
+			Node<T> l = list1.head, r = list2.head;
+			LinkedList<T> retList = new LinkedList<T>();
+			Node<T> curNode = null;
+			
+			while(l != null || r != null ){
+				int result = this.comp.compare(l.data, r.data);
+				
+				if(result <= 0){
+					curNode = l;
+					l = l.next;
+				}else{
+					curNode = r;
+					r = r.next;
+				}
+				
+				retList.append(curNode.data);
+			}
+			
+			if (r !=  null){
+				while(r != null){
+					retList.append(r.data);
+					r = r.next;
+				}
+			}
+			if(l != null){
+				while(l != null){
+					retList.append(l.data);
+					l = l.next;
+				}
+			}
+			
+			return retList;
 		}
 		
 		public void sort(LinkedList<T> list) {
-
-			if(list.head == null || list.head.next == null){
-				//return list.head;
-			}
+			this.sort1(list);
+		}
+		
+		public LinkedList<T> sort1(LinkedList<T> list){
+			if(list.size <= 1) return list;
+			
+			int half = (list.size / 2) - 1;
+			
+			LinkedList<T> newlist = null;
+			
+			Node<T> halfNode = list.get(half);
+			newlist.head = halfNode.next;
+			halfNode.next = null;
+			
+			LinkedList<T> firstList = this.sort1(list);
+			LinkedList<T> secondList = this.sort1(newlist);
+			
+			list = this.merge(firstList, secondList);
+			
+			return list;
 		}
 
-		public void parallel_sort(LinkedList<T> list) {			
+		public void parallel_sort(LinkedList<T> list) {
+			this.parallel_sort(list);
+		}
+		
+		public LinkedList<T> parallel_sort1(LinkedList<T> list){
+			mutex.lock(); //lock the critical section first
+			if(list.size <= 1) return list;
+			Future<LinkedList<T>> result1, result2;		
+			int half = (list.size / 2) - 1;
+			
+			LinkedList<T> newlist = null;
+			
+			Node<T> halfNode = list.get(half);
+			newlist.head = halfNode.next;
+			halfNode.next = null;
+			result1 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+			LinkedList<T> firstList = this.sort1(list);
+			LinkedList<T> secondList = this.sort1(newlist);
+			
+			list = this.merge(firstList, secondList);
+			mutex.unlock(); //release the lock
+			return list;
 		}
 		
 		//#########

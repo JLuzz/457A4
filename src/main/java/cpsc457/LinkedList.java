@@ -194,6 +194,7 @@ public class LinkedList<T> implements Iterable<T> {
 			//ExecutorService
 			//Depth limit
     	ExecutorService exec = Executors.newFixedThreadPool(25);
+    	int threadsLeft = 25;
 	
 		//Comparison function
 		final Comparator<T> comp;
@@ -276,7 +277,7 @@ public class LinkedList<T> implements Iterable<T> {
 		public LinkedList<T> parallel_sort1(LinkedList<T> list){
 			mutex.lock(); //lock the critical section first
 			if(list.size <= 1) return list;
-			Future<LinkedList<T>> result1, result2;		
+			Future<LinkedList<T>> result1 = null, result2 = null;		
 			int half = (list.size / 2) - 1;
 			
 			LinkedList<T> newlist = null;
@@ -284,14 +285,54 @@ public class LinkedList<T> implements Iterable<T> {
 			Node<T> halfNode = list.get(half);
 			newlist.head = halfNode.next;
 			halfNode.next = null;
-			result1 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+			if (threadsLeft != 0){
+				//result1 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+				threadsLeft --;
+			}else{
+				//sequential sort
+			}
+			
+			if (threadsLeft != 0){
+				//result2 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+				threadsLeft --;
+			}else{
+				//sequential sort
+			}
+			
 			LinkedList<T> firstList = this.sort1(list);
 			LinkedList<T> secondList = this.sort1(newlist);
 			
-			list = this.merge(firstList, secondList);
+			while(!result1.isDone()||!result2.isDone()); //wait for threads to finish
+			
+			if (result1 != null){
+				try {
+					firstList = result1.get();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			if(result2 != null){
+				try {
+					secondList = result2.get();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			LinkedList<T> retList = this.merge(firstList, secondList);
 			mutex.unlock(); //release the lock
-			return list;
+			return retList;
 		}
+
 		
 		//#########
 		//# Steps #

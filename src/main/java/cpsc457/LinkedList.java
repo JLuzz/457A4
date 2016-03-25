@@ -73,14 +73,20 @@ public class LinkedList<T> implements Iterable<T> {
 
 	//Returns the size of the list
     public int size() {
-        return size; //either iterate through all the list and count
+    	mutex.lock();
+    	int ret = size;
+    	mutex.unlock();
+    	return ret; //either iterate through all the list and count
 					//or create an attribute that stores the size and changes
 					//every time we add or remove a node
     }
 	
 	//Checks if the list is empty
 	public boolean isEmpty() {
-        if(size == 0){
+		mutex.lock();
+		int cSize = size;
+		mutex.unlock();
+        if(cSize == 0){
         	return true;
         }else{
         	return false;
@@ -89,7 +95,9 @@ public class LinkedList<T> implements Iterable<T> {
 	
 	//Deletes all the nodes in the list
 	public void clear() {
+		mutex.lock();
 		head = tail = null;
+		mutex.unlock();
 		//just set the head and tail to null (the garbage collector takes care of the rest)
 			//cpp developers: be careful, you have to destroy them first
 		
@@ -100,7 +108,8 @@ public class LinkedList<T> implements Iterable<T> {
 	
 	//Adds a new node to the list at the end (tail)
     public void append(T t) {
-    	Node<T> temp = new Node(t);
+    	mutex.lock();
+    	Node<T> temp = new Node<T>(t);
         if(head == null){
         	head = tail = temp;
         	size += 1;
@@ -109,6 +118,7 @@ public class LinkedList<T> implements Iterable<T> {
         	tail = temp;
         	size += 1;
         }
+        mutex.unlock();
 		//Check if it is empty 
 			//head = tail = t
 		//Else add to the tail and move the tail to the end
@@ -122,10 +132,12 @@ public class LinkedList<T> implements Iterable<T> {
 		if(index > size){
 			return null;
 		}else{
+			mutex.lock();
 			Node<T> n = head;
 			for(int i = 1; i < index; i++){
 				n = n.next;
 			}
+			mutex.unlock();
 			return n;
 		}
 		//Iterate through the list
@@ -142,27 +154,44 @@ public class LinkedList<T> implements Iterable<T> {
 			
 			private LinkedList.Node<T> curNode = head, prevNode = null;
 			
+			public T current(){
+				mutex.lock();
+				T ret = curNode.data;
+				mutex.unlock();
+				return ret;
+			}
+			
 			@Override
 			public boolean hasNext() {
 				// TODO Auto-generated method stub
-				if(head == null)return false;
-				if (curNode.next != null) return true;
+				mutex.lock();
+				Node<T> check = head;
+				Node<T> n = curNode.next;
+				mutex.unlock();
+				if(check == null)return false;
+				if (n != null) return true;
 				else return false;
 			}
 
 			@Override
 			public T next() {
 				// TODO Auto-generated method stub
+				mutex.lock();
 				prevNode = curNode;
 				curNode = curNode.next;
-				return curNode.next.data;
+				T ret = curNode.data;
+				mutex.unlock();
+				return ret;
 			}
 
 			@Override
 			public void remove() {
 				// TODO Auto-generated method stub
+				mutex.lock();
 				prevNode.next = curNode.next;
 				curNode = curNode.next;
+				size -= 1;
+				mutex.unlock();
 			}
 			
 		};
@@ -177,16 +206,14 @@ public class LinkedList<T> implements Iterable<T> {
 	
 	//Sorts the link list in serial
     private void sort(Comparator<T> comp) {
-	
 		new MergeSort<T>(comp).sort(this); //Run this within the critical section (as discussed before)
-		
 		//It might not allow you to use this inside critical
 			//Create a final pointer = this then use that pointer
     }
 
 	//Sorts the link list in parallel (using multiple threads)
     private void par_sort(Comparator<T> comp) {
-		new MergeSort<T>(comp).parallel_sort(this); //Run this within the critical section (as discussed before)
+	    new MergeSort<T>(comp).parallel_sort(this); //Run this within the critical section (as discussed before)
     }
 
 	//Merge sort
@@ -197,6 +224,8 @@ public class LinkedList<T> implements Iterable<T> {
 			//Depth limit
     	ExecutorService exec = Executors.newFixedThreadPool(25);
     	int threadsLeft = 25;
+    	private static Lock mMutex = null;
+    	
 	
 		//Comparison function
 		final Comparator<T> comp;
@@ -204,6 +233,7 @@ public class LinkedList<T> implements Iterable<T> {
 		//Constructor
 		public MergeSort(Comparator<T> comp) {
 			this.comp = comp;
+			mMutex = new ReentrantLock(true);
 		}
 
 		//#####################
@@ -215,7 +245,9 @@ public class LinkedList<T> implements Iterable<T> {
 
 
 		public LinkedList<T> merge(LinkedList<T> list1, LinkedList<T> list2){
+			mMutex.lock();
 			Node<T> l = list1.head, r = list2.head;
+			mMutex.unlock();
 			LinkedList<T> retList = new LinkedList<T>();
 			Node<T> curNode = null;
 			
@@ -250,7 +282,11 @@ public class LinkedList<T> implements Iterable<T> {
 		}
 		
 		public void sort(LinkedList<T> list) {
-			this.sort1(list);
+			mMutex.lock();
+			LinkedList<T> newlist = this.sort1(list);
+			list.head = newlist.head;
+			list.tail = newlist.tail;
+			mMutex.unlock();
 		}
 		
 		public LinkedList<T> sort1(LinkedList<T> list){
@@ -259,7 +295,6 @@ public class LinkedList<T> implements Iterable<T> {
 			int half = (list.size / 2);
 			
 			LinkedList<T> newlist = new LinkedList<T>();
-			
 			Node<T> halfNode = list.get(half);
 			newlist.head = halfNode.next;
 			newlist.tail = list.tail;
@@ -278,42 +313,65 @@ public class LinkedList<T> implements Iterable<T> {
 		}
 
 		public void parallel_sort(LinkedList<T> list) {
-			this.parallel_sort(list);
+			LinkedList<T> newlist = this.parallel_sort1(list);
+			list.head = newlist.head;
+			list.tail = newlist.tail;
 		}
 		
 		public LinkedList<T> parallel_sort1(LinkedList<T> list){
-			mutex.lock(); //lock the critical section first
 			if(list.size <= 1) return list;
-			Future<LinkedList<T>> result1 = null, result2 = null;		
-			int half = (list.size / 2) - 1;
-			
-			LinkedList<T> newlist = null;
+			mMutex.lock();
+			LinkedList<T> initList = new LinkedList<T>();
+			int half = (list.size / 2);
+			LinkedList<T> newlist = new LinkedList<T>();
 			
 			Node<T> halfNode = list.get(half);
 			newlist.head = halfNode.next;
+			newlist.tail = list.tail;
+			newlist.size = list.size - half;
+			
+			initList.head = list.head;
+			initList.tail = halfNode;
+			initList.size = half;
+			mMutex.unlock();
+			
 			halfNode.next = null;
-			if (threadsLeft != 0){
-				//result1 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+			Future<LinkedList<T>> result1 = null, result2 = null;
+			
+			LinkedList<T> firstList = null;
+			LinkedList<T> secondList= null;
+			if(threadsLeft != 0){
 				threadsLeft --;
+				result1 = exec.submit(new Callable<LinkedList<T>>(){
+					public LinkedList<T> call() throws Exception{
+						return parallel_sort1(initList);
+					}
+				});
+					
 			}else{
-				//sequential sort
+				firstList = this.sort1(initList);
 			}
 			
-			if (threadsLeft != 0){
-				//result2 = exec.submit(this.parallel_sort1(list)); //how to submit a task that isn't run();
+			if(threadsLeft != 0){
 				threadsLeft --;
+				result2 = exec.submit(new Callable<LinkedList<T>>(){
+					public LinkedList<T> call() throws Exception{
+						return parallel_sort1(newlist);
+					}
+				});
+					
 			}else{
-				//sequential sort
-			}
+				secondList = this.sort1(newlist);
+			}				
 			
-			LinkedList<T> firstList = this.sort1(list);
-			LinkedList<T> secondList = this.sort1(newlist);
 			
-			while(!result1.isDone()||!result2.isDone()); //wait for threads to finish
+			//while(!result1.isDone()||!result2.isDone()) System.out.println("hi"); //wait for threads to finish
 			
 			if (result1 != null){
 				try {
+					System.out.println("start");
 					firstList = result1.get();
+					System.out.println("end");
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -325,7 +383,9 @@ public class LinkedList<T> implements Iterable<T> {
 			
 			if(result2 != null){
 				try {
+					System.out.println("start");
 					secondList = result2.get();
+					System.out.println("end");
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -334,10 +394,8 @@ public class LinkedList<T> implements Iterable<T> {
 					e.printStackTrace();
 				}
 			}
-			
+
 			LinkedList<T> retList = this.merge(firstList, secondList);
-			
-			mutex.unlock(); //release the lock
 			return retList;
 		}
 

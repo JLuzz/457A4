@@ -84,7 +84,8 @@ public class RandomTests {
 
     private void testFailedInput(int [] input){
         LinkedList<Integer> list = new LinkedList<Integer>();
-        for (int i = 0; i < input.length; i++) {
+        System.out.println("hi: " + input.length);
+	for (int i = 0; i < input.length; i++) {
             list.append(input[i]);
         }
 

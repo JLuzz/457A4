@@ -164,6 +164,7 @@ public class LinkedList<T> implements Iterable<T> {
 			@Override
 			public boolean hasNext() {
 				// TODO Auto-generated method stub
+				if(curNode == null)return false;
 				mutex.lock();
 				Node<T> check = head;
 				Node<T> n = curNode.next;

@@ -341,7 +341,9 @@ public class LinkedList<T> implements Iterable<T> {
 			LinkedList<T> firstList = null;
 			LinkedList<T> secondList= null;
 			if(threadsLeft != 0){
+				mMutex.lock();
 				threadsLeft --;
+				mMutex.unlock();
 				result1 = exec.submit(new Callable<LinkedList<T>>(){
 					public LinkedList<T> call() throws Exception{
 						return parallel_sort1(initList);
@@ -353,7 +355,9 @@ public class LinkedList<T> implements Iterable<T> {
 			}
 			
 			if(threadsLeft != 0){
+				mMutex.lock();
 				threadsLeft --;
+				mMutex.unlock();
 				result2 = exec.submit(new Callable<LinkedList<T>>(){
 					public LinkedList<T> call() throws Exception{
 						return parallel_sort1(newlist);
@@ -369,9 +373,10 @@ public class LinkedList<T> implements Iterable<T> {
 			
 			if (result1 != null){
 				try {
-					System.out.println("start");
 					firstList = result1.get();
-					System.out.println("end");
+					mMutex.lock();
+					threadsLeft ++;
+					mMutex.unlock();
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -383,9 +388,10 @@ public class LinkedList<T> implements Iterable<T> {
 			
 			if(result2 != null){
 				try {
-					System.out.println("start");
 					secondList = result2.get();
-					System.out.println("end");
+					mMutex.lock();
+					threadsLeft++;
+					mMutex.unlock();
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
